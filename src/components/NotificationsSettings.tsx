@@ -10,8 +10,12 @@ import {
     getNotifyDone, setNotifyDone,
     playSound,
 } from '@/lib/sound';
+import type { NotificationSettings } from '@/lib/firestoreService';
 
-interface Props { onClose: () => void; }
+interface Props {
+    onClose: () => void;
+    onSave?: (s: NotificationSettings) => void;
+}
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
     return (
@@ -36,7 +40,7 @@ function Row({ label, desc, on, onToggle }: { label: string; desc?: string; on: 
     );
 }
 
-export default function NotificationsSettings({ onClose }: Props) {
+export default function NotificationsSettings({ onClose, onSave }: Props) {
     const [soundOn, setSoundOn] = useState(getSoundEnabled);
     const [selectedSound, setSelectedSound] = useState<SoundType>(getSoundType);
     const [notifySet, setNotifySetL] = useState(getNotifySet);
@@ -44,15 +48,29 @@ export default function NotificationsSettings({ onClose }: Props) {
     const [notifyDone, setNotifyDoneL] = useState(getNotifyDone);
     const [previewing, setPreviewing] = useState<SoundType | null>(null);
 
+    const persist = (patch: Partial<NotificationSettings>) => {
+        const full: NotificationSettings = {
+            soundEnabled: soundOn,
+            soundType: selectedSound,
+            notifySet,
+            notifyExercise,
+            notifyDone,
+            ...patch,
+        };
+        onSave?.(full);
+    };
+
     const handleSoundToggle = () => {
         const next = !soundOn;
         setSoundOn(next);
         setSoundEnabled(next);
+        persist({ soundEnabled: next });
     };
 
     const handleSelectSound = (id: SoundType) => {
         setSelectedSound(id);
         setSoundType(id);
+        persist({ soundType: id });
         previewSound(id);
     };
 
@@ -95,7 +113,7 @@ export default function NotificationsSettings({ onClose }: Props) {
                         </button>
                     </div>
 
-                    {/* Master sound toggle */}
+                    {/* Master toggle */}
                     <div className="glass rounded-2xl p-4 mb-4">
                         <div className="flex items-center gap-3">
                             <span className="text-2xl">🔔</span>
@@ -107,8 +125,8 @@ export default function NotificationsSettings({ onClose }: Props) {
                         </div>
                     </div>
 
-                    {/* Sound picker */}
                     <div className={`transition-opacity ${soundOn ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+                        {/* Sound picker */}
                         <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3 px-1">בחר צליל</h3>
                         <div className="grid grid-cols-1 gap-2 mb-5">
                             {SOUND_OPTIONS.map(opt => (
@@ -122,9 +140,7 @@ export default function NotificationsSettings({ onClose }: Props) {
                                 >
                                     <span className="text-xl">{opt.emoji}</span>
                                     <span className="flex-1 font-medium text-sm">{opt.label}</span>
-                                    {selectedSound === opt.id && (
-                                        <span className="w-2 h-2 rounded-full bg-blue-400" />
-                                    )}
+                                    {selectedSound === opt.id && <span className="w-2 h-2 rounded-full bg-blue-400" />}
                                     <motion.button
                                         whileTap={{ scale: 0.9 }}
                                         onClick={e => { e.stopPropagation(); previewSound(opt.id); }}
@@ -146,19 +162,31 @@ export default function NotificationsSettings({ onClose }: Props) {
                                 label="סיום מנוחה בין סטים"
                                 desc="צלצל כש-מנוחת הסט נגמרת"
                                 on={notifySet}
-                                onToggle={() => { const n = !notifySet; setNotifySetL(n); setNotifySet(n); }}
+                                onToggle={() => {
+                                    const n = !notifySet;
+                                    setNotifySetL(n); setNotifySet(n);
+                                    persist({ notifySet: n });
+                                }}
                             />
                             <Row
                                 label="סיום מנוחה בין תרגילים"
                                 desc="צלצל לפני תרגיל הבא"
                                 on={notifyExercise}
-                                onToggle={() => { const n = !notifyExercise; setNotifyExerciseL(n); setNotifyExercise(n); }}
+                                onToggle={() => {
+                                    const n = !notifyExercise;
+                                    setNotifyExerciseL(n); setNotifyExercise(n);
+                                    persist({ notifyExercise: n });
+                                }}
                             />
                             <Row
                                 label="סיום אימון"
                                 desc="צלצל כשהאימון הסתיים"
                                 on={notifyDone}
-                                onToggle={() => { const n = !notifyDone; setNotifyDoneL(n); setNotifyDone(n); }}
+                                onToggle={() => {
+                                    const n = !notifyDone;
+                                    setNotifyDoneL(n); setNotifyDone(n);
+                                    persist({ notifyDone: n });
+                                }}
                             />
                         </div>
                     </div>

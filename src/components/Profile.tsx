@@ -4,12 +4,16 @@ import { MOCK_STATS, WorkoutPlan, Exercise } from '@/data/mock';
 import { useAuth } from '@/context/AuthContext';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import NotificationsSettings from '@/components/NotificationsSettings';
-import { getSoundEnabled, setSoundEnabled } from '@/lib/sound';
+import { PersonalDetails } from '@/lib/firestoreService';
+import type { NotificationSettings } from '@/lib/firestoreService';
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 interface ProfileProps {
   workouts: WorkoutPlan[];
   setWorkouts: (w: WorkoutPlan[]) => void | Promise<void>;
+  personal: PersonalDetails;
+  setPersonal: (d: PersonalDetails) => void;
+  onSaveNotificationSettings: (s: NotificationSettings) => void;
 }
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
@@ -241,16 +245,15 @@ function WorkoutModal({
 }
 
 /* ─── Main Profile component ─────────────────────────────────────────────── */
-export default function Profile({ workouts, setWorkouts }: ProfileProps) {
+export default function Profile({ workouts, setWorkouts, personal, setPersonal, onSaveNotificationSettings }: ProfileProps) {
   const { signOut } = useAuth();
   const [modal, setModal] = useState<'add' | 'edit' | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [editId, setEditId] = useState<string | null>(null);
   const [showPersonal, setShowPersonal] = useState(false);
-  const [personal, setPersonal] = useState<PersonalDetails>(DEFAULT_PERSONAL);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [soundOn, setSoundOn] = useState(getSoundEnabled);
+
 
   const openAdd = () => { setForm(EMPTY_FORM); setModal('add'); };
   const openEdit = (w: WorkoutPlan) => {
@@ -288,7 +291,7 @@ export default function Profile({ workouts, setWorkouts }: ProfileProps) {
         <PersonalDetailsModal details={personal} setDetails={setPersonal} onClose={() => setShowPersonal(false)} />
       )}
       {showNotifications && (
-        <NotificationsSettings onClose={() => setShowNotifications(false)} />
+        <NotificationsSettings onClose={() => setShowNotifications(false)} onSave={onSaveNotificationSettings} />
       )}
       <ConfirmDialog
         open={!!pendingDeleteId}

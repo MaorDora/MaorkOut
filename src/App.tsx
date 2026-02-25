@@ -7,59 +7,94 @@ import ActiveWorkout from './components/ActiveWorkout';
 import Profile from './components/Profile';
 import Schedule from './components/Schedule';
 import Login from './components/Login';
+import PendingApproval from './components/PendingApproval';
 import { WorkoutPlan, MOCK_WORKOUTS } from './data/mock';
 import {
   getWorkouts,
   saveWorkout,
   deleteWorkout as deleteWorkoutFS,
+  getPersonalDetails,
+  savePersonalDetails,
+  PersonalDetails,
+  getNotificationSettings,
+  saveNotificationSettings,
+  NotificationSettings,
 } from './lib/firestoreService';
+import {
+  getSoundEnabled, setSoundEnabled,
+  getSoundType, setSoundType,
+  getNotifySet, setNotifySet,
+  getNotifyExercise, setNotifyExercise,
+  getNotifyDone, setNotifyDone,
+} from './lib/sound';
 import { Loader2 } from 'lucide-react';
+
+const DEFAULT_PERSONAL: PersonalDetails = {
+  name: 'ספורטאי',
+  age: 25,
+  weight: 75,
+  height: 175,
+  level: 'בינוני',
+  since: '2024',
+};
 
 /* ─── Inner app (needs auth context) ────────────────────────────────────── */
 function AppInner() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, userStatus } = useAuth();
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [activeWorkout, setActiveWorkout] = useState<WorkoutPlan | null>(null);
   const [workouts, setWorkouts] = useState<WorkoutPlan[]>([]);
+  const [personal, setPersonal] = useState<PersonalDetails>(DEFAULT_PERSONAL);
   const [dataLoading, setDataLoading] = useState(true);
 
-  // Listen for custom navigate events from child components
   useEffect(() => {
     const handleNavigate = (e: CustomEvent) => setCurrentPage(e.detail);
     window.addEventListener('navigate', handleNavigate as EventListener);
     return () => window.removeEventListener('navigate', handleNavigate as EventListener);
   }, []);
 
-  // Load workouts from Firestore when user signs in.
-  // For new users (empty Firestore), seed with MOCK_WORKOUTS and save them.
+  /* ── Load all user data when approved user signs in ── */
   useEffect(() => {
-    if (!user) {
+    if (!user || userStatus !== 'approved') {
       setWorkouts([]);
       setDataLoading(false);
       return;
     }
     setDataLoading(true);
-    getWorkouts(user.uid)
-      .then(async data => {
+
+    Promise.all([
+      // 1. Workouts
+      getWorkouts(user.uid).then(async data => {
         if (data.length > 0) {
-          // Returning user — load their saved workouts
           setWorkouts(data);
         } else {
-          // New user — seed with starter workouts and persist them
           setWorkouts(MOCK_WORKOUTS);
           await Promise.all(MOCK_WORKOUTS.map(w => saveWorkout(user.uid, w)));
         }
-      })
-      .catch(() => setWorkouts(MOCK_WORKOUTS))
+      }),
+      // 2. Personal details
+      getPersonalDetails(user.uid).then(data => {
+        if (data) setPersonal(data);
+      }),
+      // 3. Notification settings — apply to localStorage
+      getNotificationSettings(user.uid).then(data => {
+        if (data) {
+          setSoundEnabled(data.soundEnabled);
+          setSoundType(data.soundType as any);
+          setNotifySet(data.notifySet);
+          setNotifyExercise(data.notifyExercise);
+          setNotifyDone(data.notifyDone);
+        }
+      }),
+    ])
+      .catch(console.error)
       .finally(() => setDataLoading(false));
-  }, [user]);
+  }, [user, userStatus]);
 
-
-  // Persist workouts to Firestore whenever the list changes
+  /* ── Workout handlers (optimistic) ── */
   const handleSetWorkouts = async (updated: WorkoutPlan[]) => {
     setWorkouts(updated);
     if (!user) return;
-    // Determine which were deleted
     const updatedIds = new Set(updated.map(w => w.id));
     const deleted = workouts.filter(w => !updatedIds.has(w.id));
     await Promise.all([
@@ -68,8 +103,19 @@ function AppInner() {
     ]);
   };
 
-  // Show spinner while auth or data loads
-  if (authLoading || dataLoading) {
+  /* ── Personal details handler (optimistic) ── */
+  const handleSetPersonal = (updated: PersonalDetails) => {
+    setPersonal(updated);
+    if (user) savePersonalDetails(user.uid, updated).catch(console.error);
+  };
+
+  /* ── Notification settings handler (optimistic) ── */
+  const handleSaveNotificationSettings = (settings: NotificationSettings) => {
+    if (!user) return;
+    saveNotificationSettings(user.uid, settings).catch(console.error);
+  };
+
+  if (authLoading || (user && userStatus === null)) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <Loader2 size={40} className="text-blue-500 animate-spin" />
@@ -77,10 +123,17 @@ function AppInner() {
     );
   }
 
-  // Not signed in
   if (!user) return <Login />;
+  if (userStatus === 'pending') return <PendingApproval />;
 
-  // Signed in
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <Loader2 size={40} className="text-blue-500 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <>
       {activeWorkout ? (
@@ -99,7 +152,13 @@ function AppInner() {
           )}
           {currentPage === 'schedule' && <Schedule />}
           {currentPage === 'profile' && (
-            <Profile workouts={workouts} setWorkouts={handleSetWorkouts} />
+            <Profile
+              workouts={workouts}
+              setWorkouts={handleSetWorkouts}
+              personal={personal}
+              setPersonal={handleSetPersonal}
+              onSaveNotificationSettings={handleSaveNotificationSettings}
+            />
           )}
         </Layout>
       )}
