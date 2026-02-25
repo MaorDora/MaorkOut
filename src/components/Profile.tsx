@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { User, Bell, Settings, LogOut, Plus, Pencil, Trash2, Dumbbell, X, Check } from 'lucide-react';
 import { MOCK_STATS, WorkoutPlan, Exercise } from '@/data/mock';
 import { useAuth } from '@/context/AuthContext';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 interface ProfileProps {
@@ -245,6 +246,7 @@ export default function Profile({ workouts, setWorkouts }: ProfileProps) {
   const [editId, setEditId] = useState<string | null>(null);
   const [showPersonal, setShowPersonal] = useState(false);
   const [personal, setPersonal] = useState<PersonalDetails>(DEFAULT_PERSONAL);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const openAdd = () => { setForm(EMPTY_FORM); setModal('add'); };
   const openEdit = (w: WorkoutPlan) => {
@@ -267,7 +269,11 @@ export default function Profile({ workouts, setWorkouts }: ProfileProps) {
     setModal(null);
   };
 
-  const handleDelete = (id: string) => setWorkouts(workouts.filter(w => w.id !== id));
+  const handleDelete = (id: string) => setPendingDeleteId(id);
+  const confirmDelete = () => {
+    if (pendingDeleteId) setWorkouts(workouts.filter(w => w.id !== pendingDeleteId));
+    setPendingDeleteId(null);
+  };
 
   return (
     <div className="space-y-8">
@@ -277,6 +283,14 @@ export default function Profile({ workouts, setWorkouts }: ProfileProps) {
       {showPersonal && (
         <PersonalDetailsModal details={personal} setDetails={setPersonal} onClose={() => setShowPersonal(false)} />
       )}
+      <ConfirmDialog
+        open={!!pendingDeleteId}
+        title="מחיקת אימון"
+        message="האם אתה בטוח שברצונך למחוק את האימון הזה? לא ניתן לבטל פעולה זו."
+        confirmLabel="כן, מחק"
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDeleteId(null)}
+      />
 
       <header>
         <h1 className="text-3xl font-bold text-slate-100">הפרופיל שלי</h1>
