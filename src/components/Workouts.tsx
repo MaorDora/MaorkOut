@@ -1,12 +1,13 @@
 import { motion } from 'motion/react';
 import { Play, Clock, BarChart2, Zap } from 'lucide-react';
-import { MOCK_WORKOUTS, WorkoutPlan } from '@/data/mock';
+import { WorkoutPlan } from '@/data/mock';
 
 interface WorkoutsProps {
+  workouts: WorkoutPlan[];
   onStartWorkout: (workout: WorkoutPlan) => void;
 }
 
-export default function Workouts({ onStartWorkout }: WorkoutsProps) {
+export default function Workouts({ workouts, onStartWorkout }: WorkoutsProps) {
   return (
     <div className="space-y-6">
       <header className="mb-8">
@@ -14,8 +15,14 @@ export default function Workouts({ onStartWorkout }: WorkoutsProps) {
         <p className="text-slate-400 mt-1">בחר את האימון המתאים לך להיום</p>
       </header>
 
+      {workouts.length === 0 && (
+        <div className="glass rounded-3xl p-12 text-center text-zinc-500">
+          אין אימונים. הוסף אימון חדש בעמוד הפרופיל!
+        </div>
+      )}
+
       <div className="grid md:grid-cols-2 gap-5">
-        {MOCK_WORKOUTS.map((workout, index) => (
+        {workouts.map((workout, index) => (
           <motion.div
             key={workout.id}
             initial={{ opacity: 0, y: 20 }}
@@ -28,7 +35,7 @@ export default function Workouts({ onStartWorkout }: WorkoutsProps) {
 
             <div className="relative h-56 overflow-hidden">
               <img
-                src={workout.imageUrl}
+                src={workout.imageUrl ?? `https://picsum.photos/seed/${workout.id}/400/300`}
                 alt={workout.title}
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
               />
@@ -53,9 +60,7 @@ export default function Workouts({ onStartWorkout }: WorkoutsProps) {
                 </div>
               </div>
 
-              <button
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all"
-              >
+              <button className="w-full bg-blue-700 hover:bg-blue-600 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all">
                 <Play size={18} fill="currentColor" />
                 התחל אימון
               </button>

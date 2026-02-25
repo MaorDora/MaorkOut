@@ -22,7 +22,7 @@ export default function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col md:flex-row">
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-md sticky top-0 z-50">
-        <div className="font-bold text-xl text-blue-500">MaorkOut</div>
+        <div className="font-bold text-xl text-blue-700">MaorkOut</div>
         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2">
           {isMobileMenuOpen ? <X /> : <Menu />}
         </button>
@@ -40,7 +40,7 @@ export default function Layout({ children }: LayoutProps) {
               !isMobileMenuOpen && "hidden md:flex"
             )}
           >
-            <div className="hidden md:block font-bold text-2xl text-blue-500 mb-10">MaorkOut</div>
+            <div className="hidden md:block font-bold text-2xl text-blue-700 mb-10">MaorkOut</div>
 
             <nav className="space-y-2 flex-1">
               {navItems.map((item) => (
@@ -55,7 +55,7 @@ export default function Layout({ children }: LayoutProps) {
                   className={cn(
                     "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all",
                     activeTab === item.id
-                      ? "bg-blue-500/10 text-blue-500 font-medium"
+                      ? "bg-blue-700/10 text-blue-600 font-medium"
                       : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
                   )}
                 >

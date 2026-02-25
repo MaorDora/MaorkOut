@@ -5,11 +5,13 @@ import Workouts from './components/Workouts';
 import ActiveWorkout from './components/ActiveWorkout';
 import Profile from './components/Profile';
 import Schedule from './components/Schedule';
-import { WorkoutPlan } from './data/mock';
+import { WorkoutPlan, MOCK_WORKOUTS } from './data/mock';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [activeWorkout, setActiveWorkout] = useState<WorkoutPlan | null>(null);
+  // Shared workouts state — passed to all pages
+  const [workouts, setWorkouts] = useState<WorkoutPlan[]>(MOCK_WORKOUTS);
 
   useEffect(() => {
     const handleNavigate = (e: CustomEvent) => {
@@ -19,30 +21,25 @@ export default function App() {
     return () => window.removeEventListener('navigate', handleNavigate as EventListener);
   }, []);
 
-  const handleStartWorkout = (workout: WorkoutPlan) => {
-    setActiveWorkout(workout);
-  };
-
   const handleCompleteWorkout = () => {
     setActiveWorkout(null);
     setCurrentPage('dashboard');
-    // In a real app, save stats here
   };
 
   return (
     <>
       {activeWorkout ? (
-        <ActiveWorkout 
-          workout={activeWorkout} 
+        <ActiveWorkout
+          workout={activeWorkout}
           onClose={() => setActiveWorkout(null)}
           onComplete={handleCompleteWorkout}
         />
       ) : (
         <Layout>
-          {currentPage === 'dashboard' && <Dashboard onNavigate={setCurrentPage} />}
-          {currentPage === 'workouts' && <Workouts onStartWorkout={handleStartWorkout} />}
+          {currentPage === 'dashboard' && <Dashboard onNavigate={setCurrentPage} workouts={workouts} />}
+          {currentPage === 'workouts' && <Workouts workouts={workouts} onStartWorkout={setActiveWorkout} />}
           {currentPage === 'schedule' && <Schedule />}
-          {currentPage === 'profile' && <Profile />}
+          {currentPage === 'profile' && <Profile workouts={workouts} setWorkouts={setWorkouts} />}
         </Layout>
       )}
     </>

@@ -3,8 +3,8 @@ export interface Exercise {
   name: string;
   sets: number;
   reps: string;
-  restSeconds: number;
   muscleGroup: string;
+  restBetweenSets: number; // seconds – rest between sets within THIS exercise
 }
 
 export interface WorkoutPlan {
@@ -14,6 +14,7 @@ export interface WorkoutPlan {
   durationMin: number;
   difficulty: 'מתחיל' | 'בינוני' | 'מתקדם';
   exercises: Exercise[];
+  restBetweenExercises: number; // seconds – between any two exercises (fixed per workout)
   imageUrl?: string;
 }
 
@@ -31,11 +32,12 @@ export const MOCK_WORKOUTS: WorkoutPlan[] = [
     description: 'אימון כוח מקיף לכל שרירי הגוף, מתאים לבניית מסה וכוח בסיסי.',
     durationMin: 45,
     difficulty: 'בינוני',
+    restBetweenExercises: 90,
     exercises: [
-      { id: 'ex1', name: 'סקוואט עם משקולות', sets: 3, reps: '10-12', restSeconds: 60, muscleGroup: 'רגליים' },
-      { id: 'ex2', name: 'לחיצת חזה', sets: 3, reps: '8-10', restSeconds: 60, muscleGroup: 'חזה' },
-      { id: 'ex3', name: 'חתירה בהטיה', sets: 3, reps: '10-12', restSeconds: 60, muscleGroup: 'גב' },
-      { id: 'ex4', name: 'לחיצת כתפיים', sets: 3, reps: '10-12', restSeconds: 60, muscleGroup: 'כתפיים' },
+      { id: 'ex1', name: 'סקוואט עם משקולות', sets: 3, reps: '10-12', muscleGroup: 'רגליים', restBetweenSets: 90 },
+      { id: 'ex2', name: 'לחיצת חזה', sets: 3, reps: '8-10', muscleGroup: 'חזה', restBetweenSets: 75 },
+      { id: 'ex3', name: 'חתירה בהטיה', sets: 3, reps: '10-12', muscleGroup: 'גב', restBetweenSets: 60 },
+      { id: 'ex4', name: 'לחיצת כתפיים', sets: 3, reps: '10-12', muscleGroup: 'כתפיים', restBetweenSets: 60 },
     ],
     imageUrl: 'https://picsum.photos/seed/workout1/400/300'
   },
@@ -45,10 +47,11 @@ export const MOCK_WORKOUTS: WorkoutPlan[] = [
     description: 'אימון אינטרוולים בעצימות גבוהה לשריפת קלוריות מוגברת ושיפור סיבולת.',
     durationMin: 25,
     difficulty: 'מתקדם',
+    restBetweenExercises: 45,
     exercises: [
-      { id: 'ex5', name: 'ברפיז', sets: 4, reps: '30 שניות', restSeconds: 30, muscleGroup: 'גוף מלא' },
-      { id: 'ex6', name: 'קפיצות חבל', sets: 4, reps: '45 שניות', restSeconds: 30, muscleGroup: 'אירובי' },
-      { id: 'ex7', name: 'מטפסי הרים', sets: 4, reps: '30 שניות', restSeconds: 30, muscleGroup: 'בטן' },
+      { id: 'ex5', name: 'ברפיז', sets: 4, reps: '30 שניות', muscleGroup: 'גוף מלא', restBetweenSets: 30 },
+      { id: 'ex6', name: 'קפיצות חבל', sets: 4, reps: '45 שניות', muscleGroup: 'אירובי', restBetweenSets: 30 },
+      { id: 'ex7', name: 'מטפסי הרים', sets: 4, reps: '30 שניות', muscleGroup: 'בטן', restBetweenSets: 30 },
     ],
     imageUrl: 'https://picsum.photos/seed/workout2/400/300'
   },
@@ -58,10 +61,11 @@ export const MOCK_WORKOUTS: WorkoutPlan[] = [
     description: 'אימון רגוע לשיפור הגמישות, טווחי התנועה והרגעת הגוף.',
     durationMin: 30,
     difficulty: 'מתחיל',
+    restBetweenExercises: 20,
     exercises: [
-      { id: 'ex8', name: 'כלב מביט מטה', sets: 3, reps: '30 שניות', restSeconds: 10, muscleGroup: 'גמישות' },
-      { id: 'ex9', name: 'תנוחת הלוחם', sets: 3, reps: '30 שניות צד', restSeconds: 10, muscleGroup: 'רגליים' },
-      { id: 'ex10', name: 'תנוחת הילד', sets: 1, reps: '2 דקות', restSeconds: 0, muscleGroup: 'הרפיה' },
+      { id: 'ex8', name: 'כלב מביט מטה', sets: 3, reps: '30 שניות', muscleGroup: 'גמישות', restBetweenSets: 10 },
+      { id: 'ex9', name: 'תנוחת הלוחם', sets: 3, reps: '30 שניות צד', muscleGroup: 'רגליים', restBetweenSets: 10 },
+      { id: 'ex10', name: 'תנוחת הילד', sets: 1, reps: '2 דקות', muscleGroup: 'הרפיה', restBetweenSets: 0 },
     ],
     imageUrl: 'https://picsum.photos/seed/workout3/400/300'
   }
