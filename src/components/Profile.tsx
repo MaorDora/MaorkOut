@@ -3,6 +3,8 @@ import { User, Bell, Settings, LogOut, Plus, Pencil, Trash2, Dumbbell, X, Check 
 import { MOCK_STATS, WorkoutPlan, Exercise } from '@/data/mock';
 import { useAuth } from '@/context/AuthContext';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import NotificationsSettings from '@/components/NotificationsSettings';
+import { getSoundEnabled, setSoundEnabled } from '@/lib/sound';
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 interface ProfileProps {
@@ -247,6 +249,8 @@ export default function Profile({ workouts, setWorkouts }: ProfileProps) {
   const [showPersonal, setShowPersonal] = useState(false);
   const [personal, setPersonal] = useState<PersonalDetails>(DEFAULT_PERSONAL);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [soundOn, setSoundOn] = useState(getSoundEnabled);
 
   const openAdd = () => { setForm(EMPTY_FORM); setModal('add'); };
   const openEdit = (w: WorkoutPlan) => {
@@ -282,6 +286,9 @@ export default function Profile({ workouts, setWorkouts }: ProfileProps) {
       )}
       {showPersonal && (
         <PersonalDetailsModal details={personal} setDetails={setPersonal} onClose={() => setShowPersonal(false)} />
+      )}
+      {showNotifications && (
+        <NotificationsSettings onClose={() => setShowNotifications(false)} />
       )}
       <ConfirmDialog
         open={!!pendingDeleteId}
@@ -333,7 +340,7 @@ export default function Profile({ workouts, setWorkouts }: ProfileProps) {
           <h3 className="text-lg font-semibold text-slate-400 px-2">הגדרות</h3>
           <div className="glass rounded-3xl overflow-hidden">
             <SettingItem icon={User} label="פרטים אישיים" onClick={() => setShowPersonal(true)} />
-            <SettingItem icon={Bell} label="התראות" />
+            <SettingItem icon={Bell} label="התראות וצלילים" onClick={() => setShowNotifications(true)} />
             <SettingItem icon={Settings} label="הגדרות אפליקציה" />
           </div>
           <div className="glass rounded-3xl overflow-hidden">

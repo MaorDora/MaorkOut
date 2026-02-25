@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Timer, Pause, Play, ChevronRight, SkipForward } from 'lucide-react';
+import { X, Timer, Pause, Play, ChevronRight, SkipForward, BellOff } from 'lucide-react';
 import { WorkoutPlan } from '@/data/mock';
 import { cn } from '@/lib/utils';
+import { playSound, getSoundEnabled, getNotifySet, getNotifyExercise } from '@/lib/sound';
 
 interface ActiveWorkoutProps {
   workout: WorkoutPlan;
@@ -20,6 +21,8 @@ export default function ActiveWorkout({ workout, onClose, onComplete }: ActiveWo
   const [restTimer, setRestTimer] = useState(0);
   const [workoutTimer, setWorkoutTimer] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [isBellRinging, setIsBellRinging] = useState(false);
+  const stopBellRef = useRef<(() => void) | null>(null);
 
   const currentExercise = workout.exercises[currentExerciseIndex];
   const restBetweenSets = currentExercise.restBetweenSets ?? 60;
@@ -33,10 +36,22 @@ export default function ActiveWorkout({ workout, onClose, onComplete }: ActiveWo
     return () => clearInterval(interval);
   }, [isPaused]);
 
-  // Rest countdown
+  // Rest countdown + bell when it hits 0
   useEffect(() => {
     if (!isResting) return;
     if (restTimer <= 0) {
+      // Timer just finished — ring the bell
+      const shouldRing =
+        restType === 'set' ? (getSoundEnabled() && getNotifySet()) :
+          restType === 'exercise' ? (getSoundEnabled() && getNotifyExercise()) : false;
+
+      if (shouldRing) {
+        setIsBellRinging(true);
+        stopBellRef.current = playSound(undefined, true);
+        // Auto-stop bell after 6 seconds if user doesn't stop it
+        const autoStop = setTimeout(() => silenceBell(), 6000);
+        return () => clearTimeout(autoStop);
+      }
       setIsResting(false);
       if (restType === 'exercise') advanceExercise();
       return;
@@ -46,6 +61,14 @@ export default function ActiveWorkout({ workout, onClose, onComplete }: ActiveWo
     }, 1000);
     return () => clearInterval(interval);
   }, [isResting, restTimer]);
+
+  const silenceBell = () => {
+    stopBellRef.current?.();
+    stopBellRef.current = null;
+    setIsBellRinging(false);
+    setIsResting(false);
+    if (restType === 'exercise') advanceExercise();
+  };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -109,6 +132,37 @@ export default function ActiveWorkout({ workout, onClose, onComplete }: ActiveWo
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-1/2 bg-blue-500/10 blur-[100px]" />
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-1/2 bg-indigo-500/10 blur-[100px]" />
       </div>
+
+      {/* Bell ringing banner */}
+      <AnimatePresence>
+        {isBellRinging && (
+          <motion.div
+            initial={{ opacity: 0, y: -60 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -60 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 26 }}
+            className="absolute top-4 inset-x-4 z-50 flex items-center justify-between gap-3 bg-yellow-500/15 border border-yellow-400/30 backdrop-blur-xl rounded-2xl px-4 py-3 shadow-lg"
+          >
+            <div className="flex items-center gap-3">
+              <motion.span
+                animate={{ scale: [1, 1.25, 1] }}
+                transition={{ repeat: Infinity, duration: 0.6 }}
+                className="text-2xl select-none"
+              >
+                🔔
+              </motion.span>
+              <span className="text-yellow-200 font-semibold text-sm">המנוחה הסתיימה!</span>
+            </div>
+            <button
+              onClick={silenceBell}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-400/20 hover:bg-yellow-400/30 border border-yellow-400/30 text-yellow-200 text-xs font-bold transition-colors"
+            >
+              <BellOff size={14} />
+              עצור
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Header */}
       <div className="relative z-10 p-4 flex items-center justify-between border-b border-white/5 bg-slate-950/50 backdrop-blur-xl">
