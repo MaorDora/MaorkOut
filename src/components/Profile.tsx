@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { User, Bell, Settings, LogOut, Plus, Pencil, Trash2, Dumbbell, X, Check } from 'lucide-react';
 import { MOCK_STATS, WorkoutPlan, Exercise } from '@/data/mock';
+import { useAuth } from '@/context/AuthContext';
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 interface ProfileProps {
   workouts: WorkoutPlan[];
-  setWorkouts: (w: WorkoutPlan[]) => void;
+  setWorkouts: (w: WorkoutPlan[]) => void | Promise<void>;
 }
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
@@ -238,6 +239,7 @@ function WorkoutModal({
 
 /* ─── Main Profile component ─────────────────────────────────────────────── */
 export default function Profile({ workouts, setWorkouts }: ProfileProps) {
+  const { signOut } = useAuth();
   const [modal, setModal] = useState<'add' | 'edit' | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [editId, setEditId] = useState<string | null>(null);
@@ -321,7 +323,7 @@ export default function Profile({ workouts, setWorkouts }: ProfileProps) {
             <SettingItem icon={Settings} label="הגדרות אפליקציה" />
           </div>
           <div className="glass rounded-3xl overflow-hidden">
-            <button className="w-full flex items-center gap-4 p-4 hover:bg-white/5 transition-colors text-red-400 hover:text-red-300">
+            <button onClick={signOut} className="w-full flex items-center gap-4 p-4 hover:bg-white/5 transition-colors text-red-400 hover:text-red-300">
               <LogOut size={20} />
               <span className="font-medium">התנתק</span>
             </button>
