@@ -111,3 +111,28 @@ export async function getNotificationSettings(uid: string): Promise<Notification
 export async function saveNotificationSettings(uid: string, settings: NotificationSettings): Promise<void> {
     await setDoc(doc(db, 'users', uid, 'settings', 'notifications'), settings);
 }
+
+/* ─── Schedule ──────────────────────────────────────────────────────────── */
+
+export interface ScheduledWorkout {
+    id: string;          // unique slug: "2026-03-05T07:00"
+    workoutId: string;
+    workoutTitle: string;
+    startISO: string;    // full ISO datetime e.g. "2026-03-05T07:00:00"
+    durationMin: number;
+    color?: string;      // optional accent color
+}
+
+export async function getSchedule(uid: string): Promise<ScheduledWorkout[]> {
+    const snap = await getDocs(collection(db, 'users', uid, 'schedule'));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as ScheduledWorkout));
+}
+
+export async function saveScheduledWorkout(uid: string, slot: ScheduledWorkout): Promise<void> {
+    const { id, ...data } = slot;
+    await setDoc(doc(db, 'users', uid, 'schedule', id), data);
+}
+
+export async function deleteScheduledWorkout(uid: string, slotId: string): Promise<void> {
+    await deleteDoc(doc(db, 'users', uid, 'schedule', slotId));
+}

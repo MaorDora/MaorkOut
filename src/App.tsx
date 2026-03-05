@@ -168,7 +168,7 @@ function AppInner() {
           {currentPage === 'workouts' && (
             <Workouts workouts={workouts} onStartWorkout={setActiveWorkout} onSetWorkouts={handleSetWorkouts} />
           )}
-          {currentPage === 'schedule' && <Schedule />}
+          {currentPage === 'schedule' && <Schedule user={user} workouts={workouts} />}
           {currentPage === 'profile' && (
             <Profile
               personal={personal}
