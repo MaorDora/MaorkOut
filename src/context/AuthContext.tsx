@@ -18,6 +18,7 @@ interface AuthContextType {
     user: User | null;
     loading: boolean;
     userStatus: UserStatus | null;
+    error: string | null;
     refreshStatus: () => Promise<void>;
     signInWithGoogle: () => Promise<void>;
     signInWithEmail: (email: string, password: string) => Promise<void>;
@@ -32,19 +33,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
     const [userStatus, setUserStatus] = useState<UserStatus | null>(null);
 
+    const [error, setError] = useState<string | null>(null);
+
     const loadStatus = async (u: User) => {
-        const status = await getUserStatus(u.uid);
-        if (status === null) {
-            // Brand new user — create record with pending status
-            await createUserRecord(u.uid, u.email ?? '');
-            setUserStatus('pending');
-        } else {
-            setUserStatus(status);
+        try {
+            const status = await getUserStatus(u.uid);
+            if (status === null) {
+                // Brand new user — create record with pending status
+                await createUserRecord(u.uid, u.email ?? '');
+                setUserStatus('pending');
+            } else {
+                setUserStatus(status);
+            }
+        } catch (err: any) {
+            console.error("Failed to load user status:", err);
+            setError(err.message ?? "שגיאה בגישה לשרת, אנא נסה שוב");
+            setUserStatus(null);
         }
     };
 
     useEffect(() => {
         const unsub = onAuthStateChanged(auth, async u => {
+            setError(null);
             setUser(u);
             if (u) {
                 await loadStatus(u);
@@ -79,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, userStatus, refreshStatus, signInWithGoogle, signInWithEmail, signUp, signOut }}>
+        <AuthContext.Provider value={{ user, loading, userStatus, error, refreshStatus, signInWithGoogle, signInWithEmail, signUp, signOut }}>
             {children}
         </AuthContext.Provider>
     );

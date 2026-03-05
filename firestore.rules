@@ -1,0 +1,20 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Allow users to create their document when first signing in
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // Prevent users from changing their own 'status' field to bypass admin approval
+      allow update: if request.auth != null && request.auth.uid == userId 
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']));
+      allow delete: if false;
+
+      // Allow access to subcollections under the user
+      match /{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+  }
+}

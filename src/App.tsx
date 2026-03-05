@@ -40,7 +40,7 @@ const DEFAULT_PERSONAL: PersonalDetails = {
 
 /* ─── Inner app (needs auth context) ────────────────────────────────────── */
 function AppInner() {
-  const { user, loading: authLoading, userStatus } = useAuth();
+  const { user, loading: authLoading, userStatus, error: authError } = useAuth();
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [activeWorkout, setActiveWorkout] = useState<WorkoutPlan | null>(null);
   const [workouts, setWorkouts] = useState<WorkoutPlan[]>([]);
@@ -64,12 +64,13 @@ function AppInner() {
 
     Promise.all([
       // 1. Workouts
-      getWorkouts(user.uid).then(async data => {
+      getWorkouts(user.uid).then((data) => {
         if (data.length > 0) {
           setWorkouts(data);
         } else {
           setWorkouts(MOCK_WORKOUTS);
-          await Promise.all(MOCK_WORKOUTS.map(w => saveWorkout(user.uid, w)));
+          // Don't wait for Firestore to save, let it happen in the background
+          Promise.all(MOCK_WORKOUTS.map(w => saveWorkout(user.uid, w))).catch(console.error);
         }
       }),
       // 2. Personal details
@@ -115,10 +116,27 @@ function AppInner() {
     saveNotificationSettings(user.uid, settings).catch(console.error);
   };
 
-  if (authLoading || (user && userStatus === null)) {
+  if (authLoading || (user && userStatus === null && !authError)) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <Loader2 size={40} className="text-blue-500 animate-spin" />
+      </div>
+    );
+  }
+
+  if (authError) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
+        <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-6 rounded-2xl max-w-sm text-center">
+          <h2 className="text-xl font-bold mb-2">שגיאה בהתחברות</h2>
+          <p className="text-sm mb-4">{authError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium"
+          >
+            נסה שוב
+          </button>
+        </div>
       </div>
     );
   }
