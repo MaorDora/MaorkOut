@@ -20,12 +20,11 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col md:flex-row">
-      {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-md sticky top-0 z-50">
-        <div className="font-bold text-xl text-blue-700">MaorkOut</div>
         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2">
           {isMobileMenuOpen ? <X /> : <Menu />}
         </button>
+        <div className="font-bold text-xl text-blue-700">MaorkOut</div>
       </div>
 
       {/* Sidebar / Mobile Menu */}
