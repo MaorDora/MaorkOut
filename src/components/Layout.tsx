@@ -36,7 +36,7 @@ export default function Layout({ children }: LayoutProps) {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 300, opacity: 0 }}
             className={cn(
-              "fixed inset-y-0 right-0 z-40 w-64 bg-zinc-900 border-l border-zinc-800 p-6 flex flex-col md:relative md:translate-x-0 md:opacity-100",
+              "fixed top-16 bottom-0 right-0 z-40 w-64 bg-zinc-900 border-l border-zinc-800 p-6 flex flex-col md:relative md:top-auto md:translate-x-0 md:opacity-100",
               !isMobileMenuOpen && "hidden md:flex"
             )}
           >
