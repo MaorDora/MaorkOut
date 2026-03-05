@@ -39,10 +39,35 @@ export async function getWorkouts(uid: string): Promise<WorkoutPlan[]> {
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as WorkoutPlan));
 }
 
+/** Recursively remove undefined values so Firestore doesn't reject the write */
+function sanitizeForFirestore(obj: Record<string, unknown>): Record<string, unknown> {
+    return Object.fromEntries(
+        Object.entries(obj)
+            .filter(([, v]) => v !== undefined)
+            .map(([k, v]) => {
+                if (Array.isArray(v)) {
+                    return [k, v.map(item =>
+                        item && typeof item === 'object'
+                            ? sanitizeForFirestore(item as Record<string, unknown>)
+                            : item
+                    )];
+                }
+                if (v && typeof v === 'object') {
+                    return [k, sanitizeForFirestore(v as Record<string, unknown>)];
+                }
+                return [k, v];
+            })
+    );
+}
+
 export async function saveWorkout(uid: string, workout: WorkoutPlan): Promise<void> {
     const { id, ...data } = workout;
-    await setDoc(doc(db, 'users', uid, 'workouts', id), data);
+    await setDoc(
+        doc(db, 'users', uid, 'workouts', id),
+        sanitizeForFirestore(data as unknown as Record<string, unknown>)
+    );
 }
+
 
 export async function deleteWorkout(uid: string, workoutId: string): Promise<void> {
     await deleteDoc(doc(db, 'users', uid, 'workouts', workoutId));

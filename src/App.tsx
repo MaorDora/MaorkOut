@@ -166,13 +166,11 @@ function AppInner() {
             <Dashboard onNavigate={setCurrentPage} workouts={workouts} />
           )}
           {currentPage === 'workouts' && (
-            <Workouts workouts={workouts} onStartWorkout={setActiveWorkout} />
+            <Workouts workouts={workouts} onStartWorkout={setActiveWorkout} onSetWorkouts={handleSetWorkouts} />
           )}
           {currentPage === 'schedule' && <Schedule />}
           {currentPage === 'profile' && (
             <Profile
-              workouts={workouts}
-              setWorkouts={handleSetWorkouts}
               personal={personal}
               setPersonal={handleSetPersonal}
               onSaveNotificationSettings={handleSaveNotificationSettings}

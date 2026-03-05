@@ -5,6 +5,7 @@ export interface Exercise {
   reps: string;
   muscleGroup: string;
   restBetweenSets: number; // seconds – rest between sets within THIS exercise
+  weightKg?: number;       // optional weight in kg
 }
 
 export interface WorkoutPlan {
