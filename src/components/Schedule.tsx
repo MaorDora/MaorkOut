@@ -5,29 +5,13 @@ import {
   isSameDay, parseISO, endOfWeek,
 } from 'date-fns';
 import { he } from 'date-fns/locale';
-import {
-  ChevronLeft, ChevronRight, Plus, X, Clock,
-  Dumbbell, Trash2, CalendarCheck, CalendarX,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, Clock, Dumbbell, Trash2 } from 'lucide-react';
 import type { User } from 'firebase/auth';
 import { WorkoutPlan } from '@/data/mock';
 import {
-  ScheduledWorkout,
-  getSchedule,
-  saveScheduledWorkout,
-  deleteScheduledWorkout,
+  ScheduledWorkout, getSchedule, saveScheduledWorkout, deleteScheduledWorkout,
 } from '@/lib/firestoreService';
-import {
-  GCalEvent,
-  isGoogleApiAvailable,
-  isSignedIn,
-  hadPreviousAuth,
-  autoSignIn,
-  signInWithGoogle,
-  signOutGoogle,
-  fetchEventsForRange,
-  createCalendarEvent,
-} from '@/lib/googleCalendar';
+import { GCalEvent, fetchEventsForRange, createCalendarEvent } from '@/lib/googleCalendar';
 import { cn } from '@/lib/utils';
 
 /* ─── Constants ─────────────────────────────────────────────────────────── */
@@ -47,6 +31,7 @@ const COLORS = [
 interface ScheduleProps {
   user: User | null;
   workouts: WorkoutPlan[];
+  gcalAuth: boolean;
 }
 
 interface PendingSlot {
@@ -207,37 +192,20 @@ function BusyBlock({ event }: { event: GCalEvent }) {
 }
 
 /* ─── Main Schedule component ───────────────────────────────────────────── */
-export default function Schedule({ user, workouts }: ScheduleProps) {
+export default function Schedule({ user, workouts, gcalAuth }: ScheduleProps) {
   const today = new Date();
   const [weekBase, setWeekBase] = useState(() => startOfWeek(today, { weekStartsOn: 0 }));
+  const [view, setView] = useState<'week' | 'day'>('week');
+  const [selectedDay, setSelectedDay] = useState<Date>(today);
   const [slots, setSlots] = useState<ScheduledWorkout[]>([]);
   const [gcalBusy, setGcalBusy] = useState<GCalEvent[]>([]);
-  const [gcalAuth, setGcalAuth] = useState(false);
-  const [gcalAvail, setGcalAvail] = useState(false);
-  const [gcalLoading, setGcalLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<PendingSlot | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
   const weekEnd = endOfWeek(weekBase, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekBase, i));
-
-  /* ── Check if Google API is configured + try silent auto-reconnect ── */
-  useEffect(() => {
-    const tryAutoConnect = async () => {
-      const avail = isGoogleApiAvailable();
-      setGcalAvail(avail);
-      if (!avail) return;
-      if (!hadPreviousAuth()) return; // user never connected before
-      setGcalLoading(true);
-      const ok = await autoSignIn();
-      setGcalAuth(ok);
-      setGcalLoading(false);
-    };
-    // Wait a bit for gapi/gsi scripts to finish loading
-    const t = setTimeout(tryAutoConnect, 900);
-    return () => clearTimeout(t);
-  }, []);
+  const displayDays = view === 'week' ? weekDays : [selectedDay];
 
   /* ── Load Firestore schedule ── */
   useEffect(() => {
@@ -249,15 +217,12 @@ export default function Schedule({ user, workouts }: ScheduleProps) {
       .finally(() => setLoading(false));
   }, [user]);
 
-  /* ── Fetch Google Calendar events for current week ── */
-  const loadGcalEvents = async () => {
-    const events = await fetchEventsForRange(weekBase, weekEnd);
-    // Only show external events (not ones we created from MaorkOut)
-    setGcalBusy(events.filter(e => !e.isMaorkOut));
-  };
-
+  /* ── Fetch Google Calendar events when auth changes or week changes ── */
   useEffect(() => {
-    if (gcalAuth) loadGcalEvents();
+    if (!gcalAuth) return;
+    fetchEventsForRange(weekBase, weekEnd)
+      .then(events => setGcalBusy(events.filter(e => !e.isMaorkOut)))
+      .catch(console.error);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gcalAuth, weekBase]);
 
@@ -265,23 +230,6 @@ export default function Schedule({ user, workouts }: ScheduleProps) {
   useEffect(() => {
     if (gridRef.current) gridRef.current.scrollTop = (7 - HOUR_START) * ROW_H;
   }, []);
-
-  /* ── Connect Google Calendar ── */
-  const handleGcalConnect = async () => {
-    try {
-      await signInWithGoogle();
-      setGcalAuth(true);
-    } catch (e) {
-      console.error('GCal auth error', e);
-    }
-  };
-
-  const handleGcalDisconnect = () => {
-    signOutGoogle();
-    setGcalAuth(false);
-    setGcalBusy([]);
-  };
-
   /* ── Add slot ── */
   const handleConfirm = async (workoutId: string, hour: number, minute: number) => {
     if (!pending || !user) return;
@@ -334,6 +282,16 @@ export default function Schedule({ user, workouts }: ScheduleProps) {
       return isSameDay(d, day) && d.getHours() === hour;
     });
 
+  /* ── Day header click: toggle week ↔ day view ── */
+  const handleDayClick = (day: Date) => {
+    if (view === 'day' && isSameDay(day, selectedDay)) {
+      setView('week'); // same day clicked again → back to week
+    } else {
+      setSelectedDay(day);
+      setView('day');
+    }
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] md:h-[calc(100vh-40px)]">
       {pending && (
@@ -350,50 +308,39 @@ export default function Schedule({ user, workouts }: ScheduleProps) {
         <div>
           <h1 className="text-2xl font-bold text-zinc-100">לוח אימונים</h1>
           <p className="text-zinc-400 text-sm mt-0.5">
-            {format(weekBase, 'MMMM yyyy', { locale: he })}
+            {view === 'day'
+              ? format(selectedDay, 'EEEE, d בMMMM yyyy', { locale: he })
+              : format(weekBase, 'MMMM yyyy', { locale: he })}
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Google Calendar button */}
-          {gcalAvail && (
-            gcalLoading ? (
-              <span className="flex items-center gap-1.5 px-3 h-9 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-500 text-xs">
-                <span className="w-3 h-3 rounded-full border-2 border-zinc-500 border-t-transparent animate-spin" />
-                מתחבר...
-              </span>
-            ) : gcalAuth ? (
-              <button
-                onClick={handleGcalDisconnect}
-                className="flex items-center gap-1.5 px-3 h-9 rounded-xl bg-green-700/20 border border-green-600/30 text-green-400 text-xs font-medium hover:bg-green-700/30 transition-colors"
-              >
-                <CalendarCheck size={14} /> Google מחובר
-              </button>
-            ) : (
-              <button
-                onClick={handleGcalConnect}
-                className="flex items-center gap-1.5 px-3 h-9 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-medium hover:bg-zinc-700 transition-colors"
-              >
-                <CalendarX size={14} /> חבר Google Calendar
-              </button>
-            )
-          )}
+        <div className="flex items-center gap-2 flex-wrap">{/* nav only */}
 
-          {/* Week nav */}
+          {/* Week / Day nav */}
           <button
-            onClick={() => setWeekBase(w => subWeeks(w, 1))}
+            onClick={() => {
+              if (view === 'week') setWeekBase(w => subWeeks(w, 1));
+              else setSelectedDay(d => addDays(d, -1));
+            }}
             className="w-9 h-9 rounded-xl bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center text-zinc-300 transition-colors"
           >
             <ChevronRight size={18} />
           </button>
           <button
-            onClick={() => setWeekBase(startOfWeek(today, { weekStartsOn: 0 }))}
+            onClick={() => {
+              setWeekBase(startOfWeek(today, { weekStartsOn: 0 }));
+              setSelectedDay(today);
+              setView('week');
+            }}
             className="px-3 h-9 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium transition-colors"
           >
             היום
           </button>
           <button
-            onClick={() => setWeekBase(w => addWeeks(w, 1))}
+            onClick={() => {
+              if (view === 'week') setWeekBase(w => addWeeks(w, 1));
+              else setSelectedDay(d => addDays(d, 1));
+            }}
             className="w-9 h-9 rounded-xl bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center text-zinc-300 transition-colors"
           >
             <ChevronLeft size={18} />
@@ -416,21 +363,28 @@ export default function Schedule({ user, workouts }: ScheduleProps) {
       )}
 
       {/* ── Day header row ── */}
-      <div className="grid shrink-0" style={{ gridTemplateColumns: `48px repeat(7, 1fr)` }}>
+      <div className="grid shrink-0" style={{ gridTemplateColumns: `48px repeat(${displayDays.length}, 1fr)` }}>
         <div />
-        {weekDays.map(day => {
+        {displayDays.map(day => {
           const isToday = isSameDay(day, today);
+          const isSelected = view === 'day' && isSameDay(day, selectedDay);
           return (
             <div key={day.toISOString()} className="text-center py-1.5">
               <div className="text-[10px] text-zinc-500 uppercase tracking-wide">
                 {format(day, 'EEE', { locale: he })}
               </div>
-              <div className={cn(
-                'mx-auto mt-1 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors',
-                isToday ? 'bg-blue-600 text-white' : 'text-zinc-300'
-              )}>
+              <button
+                onClick={() => handleDayClick(day)}
+                title={view === 'day' ? 'חזור לתצוגה שבועית' : 'הצג יום בלבד'}
+                className={cn(
+                  'mx-auto mt-1 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all hover:scale-110',
+                  isToday && !isSelected && 'bg-blue-600 text-white',
+                  isSelected && 'bg-blue-400 text-white ring-2 ring-blue-300 ring-offset-1 ring-offset-zinc-900',
+                  !isToday && !isSelected && 'text-zinc-300 hover:bg-zinc-700',
+                )}
+              >
                 {format(day, 'd')}
-              </div>
+              </button>
             </div>
           );
         })}
@@ -444,7 +398,7 @@ export default function Schedule({ user, workouts }: ScheduleProps) {
           ref={gridRef}
           className="flex-1 overflow-y-auto border border-zinc-800 rounded-2xl bg-zinc-900/40"
         >
-          <div className="grid" style={{ gridTemplateColumns: `48px repeat(7, 1fr)` }}>
+          <div className="grid" style={{ gridTemplateColumns: `48px repeat(${displayDays.length}, 1fr)` }}>
             {HOURS.map(hour => (
               <>
                 {/* Hour label */}
@@ -457,7 +411,7 @@ export default function Schedule({ user, workouts }: ScheduleProps) {
                 </div>
 
                 {/* Day cells */}
-                {weekDays.map(day => (
+                {displayDays.map(day => (
                   <div
                     key={`${day.toISOString()}-${hour}`}
                     style={{ height: ROW_H }}

@@ -27,6 +27,13 @@ import {
   getNotifyExercise, setNotifyExercise,
   getNotifyDone, setNotifyDone,
 } from './lib/sound';
+import {
+  isGoogleApiAvailable,
+  hadPreviousAuth,
+  autoSignIn,
+  signInWithGoogle,
+  signOutGoogle,
+} from './lib/googleCalendar';
 import { Loader2 } from 'lucide-react';
 
 const DEFAULT_PERSONAL: PersonalDetails = {
@@ -46,12 +53,37 @@ function AppInner() {
   const [workouts, setWorkouts] = useState<WorkoutPlan[]>([]);
   const [personal, setPersonal] = useState<PersonalDetails>(DEFAULT_PERSONAL);
   const [dataLoading, setDataLoading] = useState(true);
+  const [gcalAuth, setGcalAuth] = useState(false);
 
   useEffect(() => {
     const handleNavigate = (e: CustomEvent) => setCurrentPage(e.detail);
     window.addEventListener('navigate', handleNavigate as EventListener);
     return () => window.removeEventListener('navigate', handleNavigate as EventListener);
   }, []);
+
+  /* ── Auto-connect Google Calendar once on app load ── */
+  useEffect(() => {
+    const tryAutoConnect = async () => {
+      if (!isGoogleApiAvailable()) return;
+      if (!hadPreviousAuth()) return;
+      const ok = await autoSignIn();
+      setGcalAuth(ok);
+    };
+    const t = setTimeout(tryAutoConnect, 1000); // wait for gapi scripts
+    return () => clearTimeout(t);
+  }, []);
+
+  const handleGcalConnect = async () => {
+    try {
+      await signInWithGoogle();
+      setGcalAuth(true);
+    } catch (e) { console.error('GCal connect error', e); }
+  };
+
+  const handleGcalDisconnect = () => {
+    signOutGoogle();
+    setGcalAuth(false);
+  };
 
   /* ── Load all user data when approved user signs in ── */
   useEffect(() => {
@@ -168,12 +200,15 @@ function AppInner() {
           {currentPage === 'workouts' && (
             <Workouts workouts={workouts} onStartWorkout={setActiveWorkout} onSetWorkouts={handleSetWorkouts} />
           )}
-          {currentPage === 'schedule' && <Schedule user={user} workouts={workouts} />}
+          {currentPage === 'schedule' && <Schedule user={user} workouts={workouts} gcalAuth={gcalAuth} />}
           {currentPage === 'profile' && (
             <Profile
               personal={personal}
               setPersonal={handleSetPersonal}
               onSaveNotificationSettings={handleSaveNotificationSettings}
+              gcalAuth={gcalAuth}
+              onGcalConnect={handleGcalConnect}
+              onGcalDisconnect={handleGcalDisconnect}
             />
           )}
         </Layout>

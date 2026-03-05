@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, Bell, Settings, LogOut, X, Check } from 'lucide-react';
+import { User, Bell, Settings, LogOut, X, Check, CalendarCheck, CalendarX } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import NotificationsSettings from '@/components/NotificationsSettings';
 import { PersonalDetails } from '@/lib/firestoreService';
@@ -9,6 +9,9 @@ interface ProfileProps {
   personal: PersonalDetails;
   setPersonal: (d: PersonalDetails) => void;
   onSaveNotificationSettings: (s: NotificationSettings) => void;
+  gcalAuth: boolean;
+  onGcalConnect: () => Promise<void>;
+  onGcalDisconnect: () => void;
 }
 
 
@@ -78,7 +81,7 @@ function PersonalDetailsModal({
 
 
 /* ─── Main Profile component ─────────────────────────────────────────────── */
-export default function Profile({ personal, setPersonal, onSaveNotificationSettings }: ProfileProps) {
+export default function Profile({ personal, setPersonal, onSaveNotificationSettings, gcalAuth, onGcalConnect, onGcalDisconnect }: ProfileProps) {
   const { signOut } = useAuth();
   const [showPersonal, setShowPersonal] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -133,6 +136,25 @@ export default function Profile({ personal, setPersonal, onSaveNotificationSetti
           <SettingItem icon={User} label="פרטים אישיים" onClick={() => setShowPersonal(true)} />
           <SettingItem icon={Bell} label="התראות וצלילים" onClick={() => setShowNotifications(true)} />
           <SettingItem icon={Settings} label="הגדרות אפליקציה" />
+        </div>
+        {/* Google Calendar connection */}
+        <div className="glass rounded-3xl overflow-hidden">
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-4">
+              {gcalAuth
+                ? <CalendarCheck size={20} className="text-green-400" />
+                : <CalendarX size={20} className="text-zinc-400" />}
+              <div>
+                <div className="font-medium text-slate-200">Google Calendar</div>
+                <div className="text-xs text-zinc-500">
+                  {gcalAuth ? 'מחובר — אימונים מסונכרנים' : 'לא מחובר'}
+                </div>
+              </div>
+            </div>
+            {gcalAuth
+              ? <button onClick={onGcalDisconnect} className="text-xs text-zinc-500 hover:text-red-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-500/10">נתק</button>
+              : <button onClick={onGcalConnect} className="text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors px-3 py-1.5 rounded-lg bg-blue-700/10 hover:bg-blue-700/20 border border-blue-700/20">חבר</button>}
+          </div>
         </div>
         <div className="glass rounded-3xl overflow-hidden">
           <button onClick={signOut} className="w-full flex items-center gap-4 p-4 hover:bg-white/5 transition-colors text-red-400 hover:text-red-300">
